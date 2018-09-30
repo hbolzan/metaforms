@@ -30,9 +30,8 @@
 
 (def form-button (prim/factory FormButton {:keyfn :button-type}))
 
-
 (defsc FormToolset
-  [this {:keys [form-state]}]
+  [this {:keys [form-state]} events]
   (dom/div
    {:className "btn-group" :role "group"}
    (map (fn [button-type] (form-button {:form-state form-state

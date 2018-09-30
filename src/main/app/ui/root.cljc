@@ -13,6 +13,7 @@
 
 ;; The main UI of your application
 
-(defsc Root [this props]
-  (c-form/form {:form-definition samples/form-definition
-                :form-state      samples/form-state}))
+(defsc Root [this {:keys [form]}]
+  {:query         [{:form (prim/get-query c-form/Form)}]
+   :initial-state (fn [form-id] {:form (prim/get-initial-state c-form/Form {:form-id "sample"})})}
+  (c-form/form form))

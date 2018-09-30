@@ -50,3 +50,22 @@
 
 (defn defs<-data [fields-defs data]
   (map #(assoc % :value (get data (:name %))) fields-defs))
+
+(def empty-by-type {:char ""
+                    :integer 0
+                    :float   0.0})
+
+(defn new-for-type [field-def]
+  (let [type (:data-type field-def)]
+    (or (type empty-by-type) "")))
+
+(defn new-data [fields-defs]
+  (into {}
+        (map
+         (fn [def] {(:name def) (or (:default def) (new-for-type def))})
+         fields-defs)))
+
+(defn append [{:keys [form/definition form/state] :as form}]
+  {:form/definition definition
+   :form/state      {:state :new
+                     :data (new-data definition)}})

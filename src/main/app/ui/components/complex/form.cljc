@@ -1,5 +1,6 @@
 (ns app.ui.components.complex.form
   (:require [fulcro.client.primitives :as prim :refer [defsc]]
+            [app.data-samples.forms :as samples]
             [app.ui.logic.complex-forms :as l-cf]
             [app.ui.logic.inputs :as l-i]
             [app.ui.components.widgets :as widgets]
@@ -41,11 +42,14 @@
 (def form-fields (prim/factory FormFields))
 
 (defsc Form
-  [this {:keys [form-definition form-state]}]
+  [this {:keys [form/definition form/state]}]
+  {:query         [:form/definition :form/state]
+   :initial-state (fn [form-id] {:form/definition samples/form-definition
+                                :form/state      samples/form-state})}
   (widgets/base
-   {:title (:title form-definition)
-    :toolbar (toolset/toolset {:form-state form-state})}
-   (dom/div nil (form-fields {:fields-defs (:fields-defs form-definition)
-                              :form-data   (-> form-state :data)}))))
+   {:title (:title definition)
+    :toolbar (toolset/toolset {:form-state state})}
+   (dom/div nil (form-fields {:fields-defs (:fields-defs definition)
+                              :form-data   (-> state :data)}))))
 
 (def form (prim/factory Form))

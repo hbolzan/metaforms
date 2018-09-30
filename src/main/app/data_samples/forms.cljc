@@ -41,6 +41,7 @@
     :options    {"D" "Data"
                  "L" "Lookup"
                  "Y" "Yes - No"}
+    :default    "D"
     :size       20
     :width      20}
    ])
