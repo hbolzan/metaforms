@@ -42,13 +42,13 @@
 (def form-fields (prim/factory FormFields))
 
 (defsc Form
-  [this {:keys [form/definition form/state]}]
+  [this {:keys [form/definition form/state] :as form}]
   {:query         [:form/definition :form/state]
    :initial-state (fn [form-id] {:form/definition samples/form-definition
                                 :form/state      samples/form-state})}
   (widgets/base
    {:title (:title definition)
-    :toolbar (toolset/toolset {:form-state state})}
+    :toolbar (toolset/toolset (prim/computed {:form form} l-cf/form-events))}
    (dom/div nil (form-fields {:fields-defs (:fields-defs definition)
                               :form-data   (-> state :data)}))))
 

@@ -56,8 +56,8 @@
                     :float   0.0})
 
 (defn new-for-type [field-def]
-  (let [type (:data-type field-def)]
-    (or (type empty-by-type) "")))
+  (let [data-type (:data-type field-def)]
+    (if data-type (data-type empty-by-type) "")))
 
 (defn new-data [fields-defs]
   (into {}
@@ -69,3 +69,5 @@
   {:form/definition definition
    :form/state      {:state :new
                      :data (new-data definition)}})
+
+(def form-events {:onAppend append})
