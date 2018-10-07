@@ -62,6 +62,9 @@
   (let [data-type (:data-type field-def)]
     (if data-type (data-type empty-by-type) "")))
 
+(defn field-change [form field-name value]
+  (assoc-in form [:form/state :data field-name] value))
+
 (defn new-data [fields-defs]
   (into {}
         (map
@@ -85,7 +88,14 @@
 
 (defn produce-event [handler]
   (fn [component]
-    (prim/transact! component `[(app.api.mutations/mutate-form {:form-mutation-fn ~handler})])))
+    (prim/transact! component `[(app.api.mutations/mutate-form {:form-id          :sample
+                                                                :form-mutation-fn ~handler})])))
+
+(defn on-change-field
+  [component field-name value]
+  (let [new-form (fn [form] (field-change form field-name value))]
+    (prim/transact! component `[(app.api.mutations/mutate-form {:form-id          :sample
+                                                                :form-mutation-fn ~new-form})])))
 
 (def form-events {:onAppend (produce-event append)
                   :onDiscard (produce-event discard)})
