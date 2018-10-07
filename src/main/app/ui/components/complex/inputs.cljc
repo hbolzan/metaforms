@@ -4,7 +4,7 @@
             #?(:cljs [fulcro.client.dom :as dom] :clj [fulcro.client.dom-server :as dom])))
 
 (defsc Dropdown
-  [this {:keys [field-def]}]
+  [this _ {:keys [field-def]}]
   (dom/select {:className "form-control"
                :id        (l-i/field-id field-def)
                :value     (:value field-def)}
@@ -19,11 +19,10 @@
   (fn [field-def] (keyword (-> field-def :field-kind name) (-> field-def :data-type name))))
 
 (defmethod field-def->input :lookup/char [field-def]
-  (dropdown {:field-def field-def}))
+  (dropdown (prim/computed {} {:field-def field-def})))
 
 (defmethod field-def->input :lookup/integer [field-def]
-  (dropdown {:field-def field-def}))
-
+  (dropdown (prim/computed {} {:field-def field-def})))
 
 (defmethod field-def->input :default [field-def]
   (dom/input {:type        "text"
@@ -35,7 +34,7 @@
               :readOnly    (:read-only field-def)}))
 
 (defsc Input
-  [this {:keys [field-def]}]
+  [this _ {:keys [field-def]}]
   (field-def->input field-def))
 
 (def input (prim/factory Input))

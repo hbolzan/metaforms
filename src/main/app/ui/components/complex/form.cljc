@@ -10,33 +10,34 @@
             #?(:cljs [fulcro.client.dom :as dom] :clj [fulcro.client.dom-server :as dom])))
 
 (defsc Field
-  [this {:keys [field-def additional-group-class]}]
+  [this {:keys [f-def]} {:keys [field-def additional-group-class]}]
   (dom/div {:className (str "form-group" (some->> additional-group-class (str " ")))}
            (dom/label {:htmlFor (l-i/field-id field-def)} (:label field-def))
-           (w-i/input {:field-def field-def})))
+           (w-i/input (prim/computed {} {:field-def field-def}))))
 
-(def field (prim/factory Field {:keyfn #(-> (:field-def %) l-i/field-id)}))
+(def field (prim/factory Field {:keyfn #(-> (:f-def %) l-i/field-id)}))
 
 (defn width->col-md-class [width]
   (str "col-md-" width))
 
 (defsc Row
-  [this {:keys [row-def row-index]}]
+  [this {:keys [row-index]} {:keys [row-def]}]
   (if (= (count (:defs row-def)) 1)
-    (field {:field-def (-> row-def :defs first)})
+    (field (prim/computed {:f-def (-> row-def :defs first)} {:field-def (-> row-def :defs first)}))
     (dom/div {:className "form-row"}
              (map (fn [field-def bootstrap-width]
-                    (field {:field-def              field-def
-                            :additional-group-class bootstrap-width}))
+                    (field (prim/computed {:f-def field-def}
+                                          {:field-def              field-def
+                                           :additional-group-class bootstrap-width})))
                   (:defs row-def)
                   (map width->col-md-class (:bootstrap-widths row-def))))))
 
 (def row (prim/factory Row {:keyfn :row-index}))
 
 (defsc FormFields
-  [this {:keys [fields-defs form-data]}]
+  [this _ {:keys [fields-defs form-data]}]
   (let [rows-defs (l-cf/distribute-fields (l-cf/defs<-data fields-defs form-data) l-cf/bootstrap-md-width)]
-    (map-indexed (fn [index row-def] (row {:row-def row-def :row-index index})) rows-defs)))
+    (map-indexed (fn [index row-def] (row (prim/computed {:row-index index} {:row-def row-def}))) rows-defs)))
 
 (def form-fields (prim/factory FormFields))
 
@@ -45,13 +46,13 @@
   {:ident         [:form/by-id :form/id]
    :query         [:form/id :form/definition :form/state]
    :initial-state (fn [form-id] {:form/id         form-id
-                                :form/definition samples/form-definition
-                                :form/state      samples/form-state})}
+                                 :form/definition samples/form-definition
+                                 :form/state      samples/form-state})}
   (widgets/base
    {:title   (:title definition)
     :toolbar (toolset/toolset (prim/computed {:form form} {:events l-cf/form-events}))}
-   (dom/div nil (form-fields {:fields-defs (:fields-defs definition)
-                              :form-data   (-> state :data)}))))
+   (dom/div nil (form-fields (prim/computed {} {:fields-defs (:fields-defs definition)
+                                                :form-data   (-> state :data)})))))
 
 (def form (prim/factory Form))
 
