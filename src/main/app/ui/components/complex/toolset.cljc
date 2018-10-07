@@ -9,21 +9,22 @@
                    :confirm {:icon "check-circle" :enabled-states [false false true]  :event :onConfir}
                    :discard {:icon "ban"          :enabled-states [false false true]  :event :onDiscard}
                    :search  {:icon "search"       :enabled-states [true  true  true]  :event :onSearch}
-                   :refresh {:icon "redo"         :enabled-states [false true  true]  :event :onRefresh}}) 
+                   :refresh {:icon "redo"         :enabled-states [false true  true]  :event :onRefresh}})
 
 (defn disabled? [form-state enabled-states]
   (not (boolean (get enabled-states (.indexOf types/form-states (:state form-state))))))
 
 (defn on-click-event
-  [form events button-type]
+  [this events button-type]
   (if-let [event ((-> button-types button-type :event) events)]
-    {:onClick #(event form)}))
+    (do
+      {:onClick #(event this)})))
 
-(defn button-props [form events enabled-states button-type]
+(defn button-props [this form events enabled-states button-type]
   (merge
    {:type      "button"
     :className "btn btn-primary btn-lg"}
-   (on-click-event form events button-type)
+   (on-click-event this events button-type)
    (cond (disabled? (:form/state form) enabled-states)
          {:disabled :disabled})))
 
@@ -31,13 +32,13 @@
   [this {:keys [form button-type]} events]
   (let [icon-class (-> button-types button-type :icon)
         enabled-states (-> button-types button-type :enabled-states)]
-    (dom/button (button-props form events enabled-states button-type)
+    (dom/button (button-props this form events enabled-states button-type)
                 (dom/i {:className (str "fas fa-" icon-class)}))))
 
 (def form-button (prim/factory FormButton {:keyfn :button-type}))
 
 (defsc FormToolset
-  [this {:keys [form]} events]
+  [this {:keys [form] :as props} {:keys [events]}]
   (dom/div
    {:className "btn-group" :role "group"}
    (map (fn [button-type] (form-button (prim/computed {:form        form

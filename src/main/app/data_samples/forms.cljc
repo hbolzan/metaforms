@@ -41,7 +41,7 @@
     :options    {"D" "Data"
                  "L" "Lookup"
                  "Y" "Yes - No"}
-    :default    "D"
+    ; :default    "D"
     :size       20
     :width      20}
    ])
@@ -49,7 +49,7 @@
 (def form-definition {:title       "Sample Form"
                       :fields-defs complex-table-columns-definition})
 
-(def form-state {:state :empty
+(def form-state {:state :view
                  :data  {"id"   1
                          "name" "Some Customer Name"
                          "kind" "D"}})

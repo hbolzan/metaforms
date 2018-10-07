@@ -11,8 +11,7 @@
 
 (defsc Field
   [this {:keys [field-def additional-group-class]}]
-  (dom/div {:className (str "form-group" (some->> additional-group-class (str " ")))
-            }
+  (dom/div {:className (str "form-group" (some->> additional-group-class (str " ")))}
            (dom/label {:htmlFor (l-i/field-id field-def)} (:label field-def))
            (w-i/input {:field-def field-def})))
 
@@ -42,14 +41,27 @@
 (def form-fields (prim/factory FormFields))
 
 (defsc Form
-  [this {:keys [form/definition form/state] :as form}]
-  {:query         [:form/definition :form/state]
-   :initial-state (fn [form-id] {:form/definition samples/form-definition
+  [this {:form/keys [id definition state] :as form}]
+  {:ident         [:form/by-id :form/id]
+   :query         [:form/id :form/definition :form/state]
+   :initial-state (fn [form-id] {:form/id         form-id
+                                :form/definition samples/form-definition
                                 :form/state      samples/form-state})}
   (widgets/base
-   {:title (:title definition)
-    :toolbar (toolset/toolset (prim/computed {:form form} l-cf/form-events))}
+   {:title   (:title definition)
+    :toolbar (toolset/toolset (prim/computed {:form form} {:events l-cf/form-events}))}
    (dom/div nil (form-fields {:fields-defs (:fields-defs definition)
                               :form-data   (-> state :data)}))))
 
 (def form (prim/factory Form))
+
+;; (defsc FormList
+;;   [this {:form-list/keys [group forms visible]}]
+;;   {:query         [:form-list/group {:form-list/forms (prim/get-query Form)}]
+;;    :initial-state (fn [{:keys [group visible]}]
+;;                     {:form-list/group   group
+;;                      :form-list/visible visible
+;;                      :form-list/forms   [(prim/get-initial-state Form {:id :sample})]})}
+;;   (form (filter #(= {:id %} visible) forms)))
+
+;; (def form-list (prim/factory FormList))

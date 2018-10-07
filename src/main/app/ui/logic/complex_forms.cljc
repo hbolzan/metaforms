@@ -1,4 +1,7 @@
-(ns app.ui.logic.complex-forms)
+(ns app.ui.logic.complex-forms
+  (:require [fulcro.client.mutations :refer [defmutation]]
+            [fulcro.client.primitives :as prim]
+            [app.api.mutations :as api]))
 
 (def empty-row {:width 0 :widths []})
 (def field-width-multiplier 10)
@@ -16,7 +19,7 @@
 
 (defn add-to-row? [row width container-width]
   (boolean (and (< (count (:widths row)) bootstrap-grid-cols)
-               (<= (+ (:width row) width) container-width))))
+                (<= (+ (:width row) width) container-width))))
 
 (defn row-reducer [container-width rows width]
   (let [current-row (last rows)]
@@ -33,14 +36,14 @@
     (map (fn [width] (-> (/ width rate) double Math/round)) (:widths row))))
 
 (defn assoc-bootstrap-widths [row bootstrap-widths]
-    (assoc row :bootstrap-widths bootstrap-widths))
+  (assoc row :bootstrap-widths bootstrap-widths))
 
 (defn final-rows->final-defs [final-rows fields-defs]
-    (reduce (fn [{output :output next-rows :rest :as results} row]
-              {:output (into output [(merge row {:defs (take (count (:widths row)) next-rows)})])
-               :rest   (drop (count (:widths row)) next-rows)})
-            {:output [] :rest fields-defs}
-            final-rows))
+  (reduce (fn [{output :output next-rows :rest :as results} row]
+            {:output (into output [(merge row {:defs (take (count (:widths row)) next-rows)})])
+             :rest   (drop (count (:widths row)) next-rows)})
+          {:output [] :rest fields-defs}
+          final-rows))
 
 (defn distribute-fields [fields-defs container-width]
   (let [distributed-rows      (distribute-widths (map :width fields-defs) (/ container-width field-width-multiplier))
@@ -65,9 +68,24 @@
          (fn [def] {(:name def) (or (:default def) (new-for-type def))})
          fields-defs)))
 
-(defn append [{:keys [form/definition form/state] :as form}]
-  {:form/definition definition
-   :form/state      {:state :new
-                     :data (new-data definition)}})
+(defn append [form]
+  (assoc form :form/state {:state    :edit
+                           :data     (-> form :form/definition :fields-defs new-data)
+                           :old-data (-> form :form/state :data)}))
 
-(def form-events {:onAppend append})
+(defn old-data [form]
+  (let [old (-> form :form/state :old-data)]
+    (if old
+      old
+      (-> form :form/definition :fields-defs new-data))))
+
+(defn discard [form]
+  (assoc form :form/state {:state :view
+                           :data  (old-data form)}))
+
+(defn produce-event [handler]
+  (fn [component]
+    (prim/transact! component `[(app.api.mutations/mutate-form {:form-mutation-fn ~handler})])))
+
+(def form-events {:onAppend (produce-event append)
+                  :onDiscard (produce-event discard)})
