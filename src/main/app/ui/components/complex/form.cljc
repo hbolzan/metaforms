@@ -16,7 +16,9 @@
    :initial-state {:ui/field-def {}}}
   (dom/div {:className (str "form-group" (some->> additional-group-class (str " ")))}
            (dom/label {:htmlFor (l-i/field-id field-def)} (:label field-def))
-           (w-i/input (prim/computed {:form form} {:field-def field-def}))))
+           (w-i/input (prim/computed {:form     form
+                                      :field/id field-id}
+                                     {:field-def field-def}))))
 
 (def field (prim/factory Field {:keyfn :ui/field-def}))
 

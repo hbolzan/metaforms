@@ -37,10 +37,12 @@
               :onChange (fn [e] (l-cf/on-change-field
                                  this
                                  (:name field-def)
-                                 "fooo"))}))
+                                 (.. e -target -value)))}))
 
 (defsc Input
-  [this {:keys [form]} {:keys [field-def]}]
+  [this {:keys [form field/id]} {:keys [field-def]}]
+  {:ident {:input/by-id :field/id}}
+  {:query [:field/id]}
   (field-def->input field-def this))
 
 (def input (prim/factory Input))
