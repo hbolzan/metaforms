@@ -2,7 +2,7 @@
   (:require [fulcro.client.primitives :as prim :refer [defsc]]
             [app.ui.logic.inputs :as l-i]
             [app.ui.logic.complex-forms :as l-cf]
-            #?(:cljs [fulcro.client.dom :as dom] :clj [fulcro.client.dom-server :as dom])))
+            [fulcro.client.dom :as dom]))
 
 (defsc Dropdown
   [this _ {:keys [field-def]}]
@@ -37,12 +37,13 @@
               :onChange (fn [e] (l-cf/on-change-field
                                  this
                                  (:name field-def)
-                                 (.. e -target -value)))}))
+                                 (:event e)))}))
 
 (defsc Input
-  [this {:keys [form field/id]} {:keys [field-def]}]
-  {:ident {:input/by-id :field/id}}
-  {:query [:field/id]}
+  [this {::keys [value form field-def]}]
+  {:query         [::value
+                   ::form
+                   ::field-def]}
   (field-def->input field-def this))
 
-(def input (prim/factory Input))
+(def input (prim/factory Input {:keyfn :ui/id}))
