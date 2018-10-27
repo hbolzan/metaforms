@@ -40,10 +40,11 @@
                                  (:event e)))}))
 
 (defsc Input
-  [this {::keys [value form field-def]}]
-  {:query         [::value
-                   ::form
-                   ::field-def]}
+  [this {:keys [input/id field-def]}]
+  {:ident [:input/by-id :input/id]
+   :initial-state (fn [id] {:input/id id})
+   :query [:input/id
+           :field-def]}
   (field-def->input field-def this))
 
-(def input (prim/factory Input {:keyfn :ui/id}))
+(def input (prim/factory Input {:keyfn #(l-i/field-id (:field-def %))}))

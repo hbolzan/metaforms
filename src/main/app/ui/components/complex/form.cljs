@@ -11,62 +11,37 @@
 
 (defsc Field
   [this
-   {:form/keys [id definition state] :as form}
-   {:keys [field-name field-def additional-group-class]}]
-  {:ident         [:field/by-id :ui/id]
-   :query         [:form/definition
-                   :form/state
-                   :ui/id]
-   :initial-state (fn [_] {:ui/id (random-uuid)})}
+   {:keys [field-def]}
+   {:keys [additional-group-class]}]
   (dom/div {:className (str "form-group" (some->> additional-group-class (str " ")))}
-           (dom/label {:htmlFor id} (:label field-def))
-           (w-i/input (prim/computed form
-                                     {:field-def field-def}))))
+           (dom/label {:htmlFor (l-i/field-id field-def)} (:label field-def))
+           (w-i/input {:field-def field-def :input/id (l-i/field-id field-def)})))
 
-(def field (prim/factory Field {:keyfn :ui/id}))
+(def field (prim/factory Field))
 
 (defn width->col-md-class [width]
   (str "col-md-" width))
 
-
-(defsc Row2
-  [this {:ui/keys [id]} {:form.row/keys [fields]}]
-  {:ident         [:row/by-id :ui/id]
-   :initial-state (fn [_] {:ui/id (random-uuid)})
-   :query         [:ui/id
-                   :form.row/fields [(prim/get-query Field2)]]})
-
 (defsc Row
-  [this
-   {:form/keys [definition state] :as form
-    :ui/keys   [id fields]}
-   {:keys [row-def]}]
-  {:ident         [:row/by-id :ui/id]
-   :initial-state (fn [_] {:ui/id (random-uuid)})
-   :query         [:form/definition
-                   :form/state
-                   :ui/id
-                   {:ui/fields [(prim/get-query Field)]}]}
-  (if (= (count (:defs row-def)) 1)
-    (field {:field-def (-> row-def :defs first)})
-    (dom/div {:className "form-row"}
-             (map (fn [field-def bootstrap-width]
-                    (field (prim/computed form
-                                          {:additional-group-class bootstrap-width
-                                           :field-def              field-def
-                                           :field-name             (:name field-def)})))
-                  (:defs row-def)
-                  (map width->col-md-class (:bootstrap-widths row-def))))))
+  [this {:keys [row-def]}]
+  (let [row-fields (map (fn [field-def bootstrap-width]
+                          (field (prim/computed {:react-key (str "field-" (:name field-def))
+                                                 :field-def field-def}
+                                                {:additional-group-class bootstrap-width})))
+                        (:defs row-def)
+                        (map width->col-md-class (:bootstrap-widths row-def)))]
+    (if (= (count (:defs row-def)) 1)
+      row-fields
+      (dom/div {:className "form-row"}
+               row-fields))))
 
-(def row (prim/factory Row {:keyfn :ui/id}))
+(def row (prim/factory Row))
 
 (defsc FormFields
-  [this {:keys [definition state] :as form} {:keys [fields-defs form-data]}]
-  (let [rows-defs (l-cf/distribute-fields (l-cf/defs<-data fields-defs form-data) l-cf/bootstrap-md-width)]
-    (map-indexed (fn [index row-def] (row (prim/computed form
-                                                        {:row-index index
-                                                         :row-def row-def})))
-                 rows-defs)))
+  [this rows-defs]
+  (map-indexed (fn [index row-def] (row (prim/computed {:react-key (str "form-row-" index)}
+                                                      row-def)))
+               rows-defs))
 
 (def form-fields (prim/factory FormFields))
 
@@ -76,14 +51,13 @@
    :query         [:form/id
                    :form/definition
                    :form/state]
-   :initial-state (fn [form-id] {:form/id         form-id
-                                :form/definition samples/form-definition
-                                :form/state      samples/form-state})}
+   :initial-state (fn [form-id] (l-cf/form-state-change {:form/id         form-id
+                                                        :form/definition samples/form-definition
+                                                        :form/state      samples/form-state}))}
   (widgets/base
    {:title   (:title definition)
     :toolbar (toolset/toolset (prim/computed props {:events l-cf/form-events}))}
-   (dom/div nil (form-fields (prim/computed props
-                                            {:fields-defs (:fields-defs definition)
-                                             :form-data   (-> state :data)})))))
+   (dom/div nil (map-indexed (fn [index row-def] (row {:react-key (str "form-row-" index) :row-def row-def}))
+                             (-> props :form/state :rows-defs)))))
 
 (def form (prim/factory Form))

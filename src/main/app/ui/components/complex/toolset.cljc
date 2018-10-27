@@ -6,7 +6,7 @@
 (def button-types {:insert  {:icon "plus-circle"  :enabled-states [true  true  false] :event :onAppend}
                    :delete  {:icon "trash-alt"    :enabled-states [false true  false] :event :onDelete}
                    :edit    {:icon "edit"         :enabled-states [false true  false] :event :onEdit}
-                   :confirm {:icon "check-circle" :enabled-states [false false true]  :event :onConfir}
+                   :confirm {:icon "check-circle" :enabled-states [false false true]  :event :onConfirm}
                    :discard {:icon "ban"          :enabled-states [false false true]  :event :onDiscard}
                    :search  {:icon "search"       :enabled-states [true  true  true]  :event :onSearch}
                    :refresh {:icon "redo"         :enabled-states [false true  true]  :event :onRefresh}})

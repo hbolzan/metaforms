@@ -85,11 +85,16 @@
 (defn discard [form]
   (assoc form :form/state {:state :view
                            :data  (old-data form)}))
+(defn form-state-change [form]
+  (let [fields-defs (-> form :form/definition :fields-defs)
+        form-data   (-> form :form/state :data)
+        rows-defs   (distribute-fields (defs<-data fields-defs form-data) bootstrap-md-width)]
+    (update form :form/state #(merge % {:rows-defs rows-defs}))))
 
 (defn produce-event [handler]
   (fn [component]
     (prim/transact! component `[(app.api.mutations/mutate-form {:form-id          :sample
-                                                                :form-mutation-fn ~handler})])))
+                                                                :form-mutation-fn ~(comp form-state-change handler)})])))
 
 (defn on-change-field
   [component field-name value]
