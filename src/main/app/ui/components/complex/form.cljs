@@ -11,13 +11,41 @@
 
 (defsc Field
   [this
-   {:keys [field-def]}
+   {:field/keys [id name label kind read-only data-type width options value]}
    {:keys [additional-group-class]}]
+  {:ident         [:field/by-name :field/name]
+   :initial-state (fn
+                    [{:keys [name label field-kind read-only data-type width options] :as field-def}]
+                    {:field/id        (l-i/field-id field-def)
+                     :field/name      name
+                     :field/label     label
+                     :field/kind      field-kind
+                     :field/read-only read-only
+                     :field/data-type data-type
+                     :field/width     width
+                     :field/options   options
+                     :field/value     ""})
+   :query         [:field/id
+                   :field/name
+                   :field/label
+                   :field/kind
+                   :field/read-only
+                   :field/data-type
+                   :field/width
+                   :field/options
+                   :field/value]}
   (dom/div {:className (str "form-group" (some->> additional-group-class (str " ")))}
-           (dom/label {:htmlFor (l-i/field-id field-def)} (:label field-def))
-           (w-i/input {:field-def field-def :input/id (l-i/field-id field-def)})))
+           (dom/label {:htmlFor id} label)
+           (w-i/field-def->input {:field-id   id
+                                  :field-kind kind
+                                  :data-type  data-type
+                                  :name       name
+                                  :label      label
+                                  :value      value
+                                  :options    options
+                                  :read-only  read-only})))
 
-(def field (prim/factory Field))
+(def field (prim/factory Field {:keyfn :field/name}))
 
 (defn width->col-md-class [width]
   (str "col-md-" width))
@@ -46,18 +74,19 @@
 (def form-fields (prim/factory FormFields))
 
 (defsc Form
-  [this {:form/keys [id definition state] :as props}]
+  [this {:form/keys [id title state fields] :as props}]
   {:ident         [:form/by-id :form/id]
    :query         [:form/id
-                   :form/definition
-                   :form/state]
-   :initial-state (fn [form-id] (l-cf/form-state-change {:form/id         form-id
-                                                        :form/definition samples/form-definition
-                                                        :form/state      samples/form-state}))}
+                   :form/title
+                   :form/state
+                   {:form/fields (prim/get-query Field)}]
+   :initial-state (fn [form-definition] {:form/id    (:id form-definition)
+                                        :form/title (:title form-definition)
+                                        :form/state :new
+                                        :form/fields (mapv #(prim/get-initial-state Field %) (:fields-defs form-definition))})}
   (widgets/base
-   {:title   (:title definition)
+   {:title   title
     :toolbar (toolset/toolset (prim/computed props {:events l-cf/form-events}))}
-   (dom/div nil (map-indexed (fn [index row-def] (row {:react-key (str "form-row-" index) :row-def row-def}))
-                             (-> props :form/state :rows-defs)))))
+   (dom/div nil (mapv #(field %) fields))))
 
 (def form (prim/factory Form))

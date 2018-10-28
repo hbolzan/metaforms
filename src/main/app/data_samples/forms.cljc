@@ -46,7 +46,8 @@
     :width      20}
    ])
 
-(def form-definition {:title       "Sample Form"
+(def form-definition {:id          :sample
+                      :title       "Sample Form"
                       :fields-defs complex-table-columns-definition})
 
 (def form-state {:state :view
