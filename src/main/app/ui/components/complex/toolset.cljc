@@ -3,22 +3,35 @@
             [app.ui.components.complex.types :as types]
             #?(:cljs [fulcro.client.dom :as dom] :clj [fulcro.client.dom-server :as dom])))
 
-(def button-types {:insert  {:icon "plus-circle"  :enabled-states [true  true  false] :event :onAppend}
-                   :delete  {:icon "trash-alt"    :enabled-states [false true  false] :event :onDelete}
-                   :edit    {:icon "edit"         :enabled-states [false true  false] :event :onEdit}
-                   :confirm {:icon "check-circle" :enabled-states [false false true]  :event :onConfirm}
-                   :discard {:icon "ban"          :enabled-states [false false true]  :event :onDiscard}
-                   :search  {:icon "search"       :enabled-states [true  true  true]  :event :onSearch}
-                   :refresh {:icon "redo"         :enabled-states [false true  true]  :event :onRefresh}})
+(def button-types {:insert  {:icon           "plus-circle"
+                             :enabled-states [:empty :view]
+                             :form-event     :append}
+                   :delete  {:icon           "trash-alt"
+                             :enabled-states [:view]
+                             :form-event     :delete}
+                   :edit    {:icon           "edit"
+                             :enabled-states [:view]
+                             :form-event     :edit}
+                   :confirm {:icon           "check-circle"
+                             :enabled-states [:edit]
+                             :form-event     :confirm}
+                   :discard {:icon           "ban"
+                             :enabled-states [:edit]
+                             :form-event     :discard}
+                   :search  {:icon           "search"
+                             :enabled-states [:empty :view]
+                             :form-event     :search}
+                   :refresh {:icon           "redo"
+                             :enabled-states [:view]
+                             :form-event     :refresh}})
 
 (defn disabled? [form-state enabled-states]
-  (not (boolean (get enabled-states (.indexOf types/form-states (:state form-state))))))
+  (-> (.indexOf enabled-states form-state) (< 0)))
 
 (defn on-click-event
   [this events button-type]
-  (if-let [event ((-> button-types button-type :event) events)]
-    (do
-      {:onClick #(event this)})))
+  (if-let [event ((-> button-types button-type :form-event) events)]
+    {:onClick #(event this)}))
 
 (defn button-props [this state events enabled-states button-type]
   (merge

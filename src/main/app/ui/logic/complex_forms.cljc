@@ -73,30 +73,19 @@
 (defn field-change [form field-name value]
   (assoc-in form [:form/state :data field-name] value))
 
-(defn new-data [fields-defs]
-  (into {}
-        (map
-         (fn [def] {(:name def) (or (:default def) (new-for-type def))})
-         fields-defs)))
-
 (defn append [form]
-  (assoc form :form/state {:state    :edit
-                           :data     (-> form :form/definition :fields-defs new-data)
-                           :old-data (-> form :form/state :data)}))
+  (assoc form :form/state :edit))
 
-(defn old-data [form]
-  (let [old (-> form :form/state :old-data)]
-    (if old
-      old
-      (-> form :form/definition :fields-defs new-data))))
+(defn confirm [form]
+  (assoc form :form/state :view))
 
 (defn discard [form]
-  (assoc form :form/state {:state :view
-                           :data  (old-data form)}))
+  (assoc form :form/state :empty))
+
 (defn produce-event [handler]
   (fn [component]
     (prim/transact! component `[(app.api.mutations/mutate-form {:form-id          :sample
-                                                                :form-mutation-fn handler})])))
+                                                                :form-mutation-fn ~handler})])))
 
 (defn on-change-field
   [component field-name value]
@@ -104,5 +93,6 @@
     (prim/transact! component `[(app.api.mutations/mutate-form {:form-id          :sample
                                                                 :form-mutation-fn ~new-form})])))
 
-(def form-events {:onAppend (produce-event append)
-                  :onDiscard (produce-event discard)})
+(def form-events {:append (produce-event append)
+                  :confirm (produce-event confirm)
+                  :discard (produce-event discard)})

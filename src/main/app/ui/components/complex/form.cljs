@@ -47,9 +47,9 @@
 
 (def form-field (prim/factory FormField {:keyfn :field/name}))
 
-(defn form-row [row-def fields]
+(defn form-row [row-index row-def fields]
   (dom/div
-   {:className "form-row"}
+   {:className "form-row" :key (str "row-" row-index)}
    (map (fn
           [field bootstrap-width]
           (form-field (prim/computed
@@ -75,6 +75,6 @@
   (widgets/base
    {:title   title
     :toolbar (toolset/toolset (prim/computed props {:events l-cf/form-events}))}
-   (dom/div nil (map (fn [row-def] (form-row row-def fields)) rows-defs))))
+   (dom/div nil (map-indexed (fn [index row-def] (form-row index row-def fields)) rows-defs))))
 
 (def form (prim/factory Form))
