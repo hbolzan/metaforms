@@ -9,7 +9,7 @@
             [app.ui.components.complex.types :as types]
             [fulcro.client.dom :as dom]))
 
-(defsc Field
+(defsc FormField
   [this
    {:field/keys [id name label kind read-only data-type width options value]}
    {:keys [additional-group-class]}]
@@ -45,33 +45,17 @@
                                   :options    options
                                   :read-only  read-only})))
 
-(def field (prim/factory Field {:keyfn :field/name}))
+(def form-field (prim/factory FormField {:keyfn :field/name}))
 
-(defn width->col-md-class [width]
-  (str "col-md-" width))
-
-(defsc Row
-  [this {:keys [row-def]}]
-  (let [row-fields (map (fn [field-def bootstrap-width]
-                          (field (prim/computed {:react-key (str "field-" (:name field-def))
-                                                 :field-def field-def}
-                                                {:additional-group-class bootstrap-width})))
-                        (:defs row-def)
-                        (map width->col-md-class (:bootstrap-widths row-def)))]
-    (if (= (count (:defs row-def)) 1)
-      row-fields
-      (dom/div {:className "form-row"}
-               row-fields))))
-
-(def row (prim/factory Row))
-
-(defsc FormFields
-  [this rows-defs]
-  (map-indexed (fn [index row-def] (row (prim/computed {:react-key (str "form-row-" index)}
-                                                      row-def)))
-               rows-defs))
-
-(def form-fields (prim/factory FormFields))
+(defn form-row [row-def fields]
+  (dom/div
+   {:className "form-row"}
+   (map (fn
+          [field bootstrap-width]
+          (form-field (prim/computed
+                       field {:additional-group-class (l-cf/width->col-md-class bootstrap-width)})))
+        (l-cf/row-fields row-def fields)
+        (:bootstrap-widths row-def))))
 
 (defsc Form
   [this {:form/keys [id title state fields rows-defs] :as props}]
@@ -79,18 +63,18 @@
    :query         [:form/id
                    :form/title
                    :form/state
-                   {:form/fields (prim/get-query Field)}
+                   {:form/fields (prim/get-query FormField)}
                    :form/rows-defs]
    :initial-state (fn
                     [{fields-defs :fields-defs :as form-definition}]
                     {:form/id        (:id form-definition)
                      :form/title     (:title form-definition)
-                     :form/state     :new
-                     :form/fields    (mapv #(prim/get-initial-state Field %) fields-defs)
+                     :form/state     :empty
+                     :form/fields    (mapv #(prim/get-initial-state FormField %) fields-defs)
                      :form/rows-defs (l-cf/distribute-fields fields-defs l-cf/bootstrap-md-width)})}
   (widgets/base
    {:title   title
     :toolbar (toolset/toolset (prim/computed props {:events l-cf/form-events}))}
-   (dom/div nil (mapv #(field %) fields))))
+   (dom/div nil (map (fn [row-def] (form-row row-def fields)) rows-defs))))
 
 (def form (prim/factory Form))

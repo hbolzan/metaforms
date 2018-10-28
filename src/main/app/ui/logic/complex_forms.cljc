@@ -55,12 +55,16 @@
         final-rows            (map assoc-bootstrap-widths distributed-rows bootstrap-widths-rows)]
     (mapv row-def-defs->fields (:output (final-rows->final-defs final-rows fields-defs)))))
 
-(defn defs<-data [fields-defs data]
-  (map #(assoc % :value (get data (:name %))) fields-defs))
-
 (def empty-by-type {:char    ""
                     :integer 0
                     :float   0.0})
+
+(defn width->col-md-class [width]
+  (str "col-md-" width))
+
+(defn row-fields [row-def fields]
+  (let [field-by-name (fn [name] (first (filter #(= (:field/name %) name) fields)))]
+    (map field-by-name (:fields row-def))))
 
 (defn new-for-type [field-def]
   (let [data-type (:data-type field-def)]
@@ -89,16 +93,10 @@
 (defn discard [form]
   (assoc form :form/state {:state :view
                            :data  (old-data form)}))
-(defn form-state-change [form]
-  (let [fields-defs (-> form :form/definition :fields-defs)
-        form-data   (-> form :form/state :data)
-        rows-defs   (distribute-fields (defs<-data fields-defs form-data) bootstrap-md-width)]
-    (update form :form/state #(merge % {:rows-defs rows-defs}))))
-
 (defn produce-event [handler]
   (fn [component]
     (prim/transact! component `[(app.api.mutations/mutate-form {:form-id          :sample
-                                                                :form-mutation-fn ~(comp form-state-change handler)})])))
+                                                                :form-mutation-fn handler})])))
 
 (defn on-change-field
   [component field-name value]
