@@ -45,16 +45,20 @@
           {:output [] :rest fields-defs}
           final-rows))
 
+(defn row-def-defs->fields [row-def]
+  (let [names (map :name (:defs row-def))]
+    (-> row-def (dissoc :defs) (assoc :fields names))))
+
 (defn distribute-fields [fields-defs container-width]
   (let [distributed-rows      (distribute-widths (map :width fields-defs) (/ container-width field-width-multiplier))
         bootstrap-widths-rows (map (partial row-widths->grid-widths bootstrap-grid-cols) distributed-rows)
         final-rows            (map assoc-bootstrap-widths distributed-rows bootstrap-widths-rows)]
-    (:output (final-rows->final-defs final-rows fields-defs))))
+    (mapv row-def-defs->fields (:output (final-rows->final-defs final-rows fields-defs)))))
 
 (defn defs<-data [fields-defs data]
   (map #(assoc % :value (get data (:name %))) fields-defs))
 
-(def empty-by-type {:char ""
+(def empty-by-type {:char    ""
                     :integer 0
                     :float   0.0})
 

@@ -74,16 +74,20 @@
 (def form-fields (prim/factory FormFields))
 
 (defsc Form
-  [this {:form/keys [id title state fields] :as props}]
+  [this {:form/keys [id title state fields rows-defs] :as props}]
   {:ident         [:form/by-id :form/id]
    :query         [:form/id
                    :form/title
                    :form/state
-                   {:form/fields (prim/get-query Field)}]
-   :initial-state (fn [form-definition] {:form/id    (:id form-definition)
-                                        :form/title (:title form-definition)
-                                        :form/state :new
-                                        :form/fields (mapv #(prim/get-initial-state Field %) (:fields-defs form-definition))})}
+                   {:form/fields (prim/get-query Field)}
+                   :form/rows-defs]
+   :initial-state (fn
+                    [{fields-defs :fields-defs :as form-definition}]
+                    {:form/id        (:id form-definition)
+                     :form/title     (:title form-definition)
+                     :form/state     :new
+                     :form/fields    (mapv #(prim/get-initial-state Field %) fields-defs)
+                     :form/rows-defs (l-cf/distribute-fields fields-defs l-cf/bootstrap-md-width)})}
   (widgets/base
    {:title   title
     :toolbar (toolset/toolset (prim/computed props {:events l-cf/form-events}))}
