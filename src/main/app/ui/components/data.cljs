@@ -5,8 +5,9 @@
 
 (defsc DataField
   [this
-   {:data-field/keys [name value]}]
-  {:ident})
+   {:data-field/keys [form name value]}]
+  {:ident (fn [this props] [:data-field/id (keyword (:form props) (:name props))])
+   :initial-state []})
 
 (defsc DataRecord
   [this
