@@ -1,6 +1,6 @@
 # Fulcro MetaForms
 
-This is a Fulcro based project. It's maing goal is to provide a tool to help build CRUD forms without coding.
+This is a Fulcro based project. It's main goal is to provide a tool to help build CRUD forms without coding.
 
 ## Motivation
 Many former desktop developers (me included) have a hard time trying to learn how to write frontend web applications. What if there was a framework that needed no coding and they could focus only on business logic? That's what I'm trying to achieve.
