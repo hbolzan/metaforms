@@ -1,4 +1,5 @@
 *.class
+yarn.lock
 *.iml
 *.jar
 .idea
@@ -9,10 +10,16 @@ lein-template.iml
 node_modules
 pom.xml
 pom.xml.asc
-resources/public/js
+resources/public/js/main
+resources/public/js/cards
+resources/public/js/test/js
 target
 out
 package-lock.json
 resources/private
+.nrepl-port
 .lein-repl-history
-resources/i18n/i18n.js
+.shadow-cljs
+karma.conf.js
+resources/public/js
+Makefile

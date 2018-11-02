@@ -1,14 +1,14 @@
 test:
 	npm install
-	lein do clean, doo chrome automated-tests once
-	lein test-refresh :run-once
+	npx shadow-cljs compile ci-tests
+	npx karma start --single-run
+	lein do clean, test-refresh :run-once # clean is needed in case AOT stuff is around
 
 i18n-extract:
-	@rm -rf target/
 	@echo "Building Clojurescript"
-	@lein cljsbuild once i18n
+	@shadow-cljs release i18n
 	@echo "Running extraction"
-	@xgettext --from-code=UTF-8 --debug -k -ktr:1 -ktrc:1c,2 -ktrf:1 -o resources/i18n/messages.pot target/i18n.js
+	@xgettext --from-code=UTF-8 --debug -k -ktr:1 -ktrc:1c,2 -ktrf:1 -o resources/i18n/messages.pot target/i18n/i18n.js
 	@echo "Done."
 	@echo 
 	@echo "Use msgmerge to merge the new messages.pot with existing translations."
