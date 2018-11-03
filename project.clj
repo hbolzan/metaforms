@@ -6,6 +6,7 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [thheller/shadow-cljs "2.4.22"]
                  [fulcrologic/fulcro "2.6.0-RC9"]
+                 [cider/cider-nrepl "0.18.0-SNAPSHOT"]
 
                  ; Only required if you use server
                  [http-kit "2.3.0"]
@@ -40,7 +41,9 @@
                           :jvm-opts     ["-XX:-OmitStackTraceInFastThrow" "-client" "-XX:+TieredCompilation" "-XX:TieredStopAtLevel=1"
                                          "-Xmx1g" "-XX:+UseConcMarkSweepGC" "-XX:+CMSClassUnloadingEnabled" "-Xverify:none"]
 
-                          :plugins      [[com.jakemccrary/lein-test-refresh "0.21.1"]]
+                          :plugins      [[com.jakemccrary/lein-test-refresh "0.21.1"]
+                                         [refactor-nrepl "2.4.0"]
+                                         [cider/cider-nrepl "0.18.0-SNAPSHOT"]]
 
                           :dependencies [[org.clojure/tools.namespace "0.3.0-alpha4"]
                                          [org.clojure/tools.nrepl "0.2.13"]

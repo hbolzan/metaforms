@@ -1,7 +1,6 @@
 (ns metaforms.ui.components.complex.form
   (:require [fulcro.client.primitives :as prim :refer [defsc]]
             [fulcro.client.mutations :refer [defmutation]]
-            [metaforms.data-samples.forms :as samples]
             [metaforms.ui.logic.complex-forms :as l-cf]
             [metaforms.ui.logic.inputs :as l-i]
             [metaforms.ui.components.widgets :as widgets]
@@ -72,25 +71,28 @@
 (def form-discard (partial form-set-state :empty))
 
 (defn form-events [form-id]
-  {:events {:append #(form-append form-id %)
+  {:events {:append  #(form-append form-id %)
             :confirm #(form-confirm form-id %)
             :discard #(form-discard form-id %)}})
 
 (defsc Form
-  [this {:form/keys [id title state fields rows-defs] :as props}]
+  [this {:form/keys [id title state fields rows-defs dataset] :as props}]
   {:ident         [:form/by-id :form/id]
    :query         [:form/id
                    :form/title
                    :form/state
+                   :form/rows-defs
                    {:form/fields (prim/get-query FormField)}
-                   :form/rows-defs]
+                   {:form/dataset (prim/get-query data/DataSet)}]
    :initial-state (fn
-                    [{fields-defs :fields-defs :as form-definition}]
+                    [{{fields-defs :fields-defs} :form-definition :as form-definition
+                      dataset         :dataset}]
                     {:form/id        (:id form-definition)
                      :form/title     (:title form-definition)
                      :form/state     :empty
                      :form/fields    (mapv #(prim/get-initial-state FormField %) fields-defs)
-                     :form/rows-defs (l-cf/distribute-fields fields-defs l-cf/bootstrap-md-width)})}
+                     :form/rows-defs (l-cf/distribute-fields fields-defs l-cf/bootstrap-md-width)
+                     :form/dataset   (prim/get-initial-state data/DataSet (assoc dataset :fields-defs fields-defs))})}
   (widgets/base
    {:title   title
     :toolbar (toolset/toolset (prim/computed props (form-events id)))}

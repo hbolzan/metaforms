@@ -50,6 +50,13 @@
                       :title       "Sample Form"
                       :fields-defs complex-table-columns-definition})
 
+(def data [{"id" 1 "name" "Some Customer Name" "kind" "D"}
+           {"id" 2 "name" "Other Customer Name" "kind" "L"}])
+
+(def dataset {:name      "sample-ds"
+              :id-key    "id"
+              :data-rows data})
+
 (def form-state {:state :view
                  :data  {"id"   1
                          "name" "Some Customer Name"

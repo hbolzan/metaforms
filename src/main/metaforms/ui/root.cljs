@@ -12,6 +12,10 @@
 
 (defsc Root [this {:keys [form]}]
   {:query         [{:form (prim/get-query c-form/Form)}]
-   :initial-state (fn [form-id] {:form (prim/get-initial-state c-form/Form samples/form-definition)})}
+   :initial-state (fn
+                    [form-id]
+                    {:form (prim/get-initial-state c-form/Form
+                                                   {:form-definition samples/form-definition
+                                                    :dataset  samples/dataset})})}
   (c-form/form form))
 

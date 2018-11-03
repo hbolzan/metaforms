@@ -5,39 +5,41 @@
 
 (defsc DataField
   [this
-   {:data-field/keys [id dataset-name name value]}]
-  {:ident         (fn [] [:data-field/id (keyword dataset-name name)])
-   :initial-state (fn [{:keys [dataset-name name value]}] {:data-field/id           (keyword dataset-name name)
-                                                          :data-field/dataset-name dataset-name
-                                                          :data-field/name         name
-                                                          :data-field/value        value})
+   {:data-field/keys [id data-record-id name value]}]
+  {:ident         [:data-field/by-id :data-field/id]
+   :initial-state (fn [{:keys [data-record-id name value]}] {:data-field/id             (str data-record-id "__" name)
+                                                             :data-field/data-record-id data-record-id
+                                                             :data-field/name           name
+                                                             :data-field/value          value})
    :query         [:data-field/id
-                   :data-field/dataset-name
+                   :data-field/data-record-id
                    :data-field/name
                    :data-field/value]})
 
-(defn new-field [data-row dataset-name {:keys [name]}]
+(defn new-field [data-row data-record-id {:keys [name]}]
   (prim/get-initial-state
-   DataField {:dataset-name dataset-name
-              :name         name
-              :value        (:value data-row)}))
-
-(defn new-row [{:keys [dataset-name id-key fields-defs data-row]}]
-  {:record/id           (keyword dataset-name (id-key fields-defs))
-   :record/dataset-name dataset-name
-   :record/id-key       id-key
-   :record/state        :browse
-   :record/fields       (mapv (partial new-field dataset-name data-row) fields-defs)})
+   DataField {:data-record-id data-record-id
+              :name           name
+              :value          (get data-row name)}))
 
 (defsc DataRecord
   [this
-   {:record/keys [id dataset-name id-key state fields]}]
-  {:ident         (fn [] [:record/by-id (keyword dataset-name id)])
-   :initial-state new-row
-   :query         [:record/id
-                   :record/id-key
-                   :record/state
-                   {:record/fields [(prim/get-query DataField)]}]})
+   {:data-record/keys [id dataset-name id-key state fields]}]
+  {:ident         [:data-record/by-id :data-record/id]
+   :initial-state (fn [{:keys [dataset-name id-key fields-defs data-row]}]
+                    (let [record-id (str dataset-name "__" (get data-row id-key))]
+                      {:data-record/id           record-id
+                       :data-record/dataset-name dataset-name
+                       :data-record/id-key       id-key
+                       :data-record/state        :browse
+                       :data-record/fields       (mapv
+                                                  (partial new-field data-row record-id)
+                                                  fields-defs)}))
+   :query         [:data-record/id
+                   :data-record/dataset-name
+                   :data-record/id-key
+                   :data-record/state
+                   {:data-record/fields (prim/get-query DataField)}]})
 
 (defsc DataSet
   [this {:dataset/keys [name id-key records]}]
@@ -52,4 +54,4 @@
                                             data-rows)})
    :query         [:dataset/name
                    :dataset/id-key
-                   {:dataset/records [(prim/get-query DataRecord)]}]})
+                   {:dataset/records (prim/get-query DataRecord)}]})
