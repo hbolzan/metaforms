@@ -66,33 +66,11 @@
   (let [field-by-name (fn [name] (first (filter #(= (:field/name %) name) fields)))]
     (map field-by-name (:fields row-def))))
 
-(defn new-for-type [field-def]
-  (let [data-type (:data-type field-def)]
-    (if data-type (data-type empty-by-type) "")))
-
 (defn field-change [form field-name value]
   (assoc-in form [:form/state :data field-name] value))
-
-(defn append [form]
-  (assoc form :form/state :edit))
-
-(defn confirm [form]
-  (assoc form :form/state :view))
-
-(defn discard [form]
-  (assoc form :form/state :empty))
-
-(defn produce-event [handler]
-  (fn [component]
-    (prim/transact! component `[(metaforms.api.client-mutations/mutate-form {:form-id :sample
-                                                                             :form-mutation-fn     ~handler})])))
 
 (defn on-change-field
   [component field-name value]
   (let [new-form (fn [form] (field-change form field-name value))]
     (prim/transact! component `[(metaforms.api.client-mutations/mutate-form {:form-id                        :sample
                                                   :form-mutation-fn ~new-form})])))
-
-(def form-events {:append (produce-event append)
-                  :confirm (produce-event confirm)
-                  :discard (produce-event discard)})

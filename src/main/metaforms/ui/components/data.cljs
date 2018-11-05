@@ -42,16 +42,19 @@
                    {:data-record/fields (prim/get-query DataField)}]})
 
 (defsc DataSet
-  [this {:dataset/keys [name id-key records]}]
+  [this {:dataset/keys [name id-key records current-record]}]
   {:ident         [:dataset/by-name :dataset/name]
    :initial-state (fn [{:keys [name id-key fields-defs data-rows]}]
-                    {:dataset/name    name
-                     :dataset/id-key  id-key
-                     :dataset/records (mapv #(prim/get-initial-state DataRecord {:dataset-name name
-                                                                                 :id-key       id-key
-                                                                                 :fields-defs  fields-defs
-                                                                                 :data-row     %})
-                                            data-rows)})
+                    (let [initial-records (mapv #(prim/get-initial-state DataRecord {:dataset-name name
+                                                                                     :id-key       id-key
+                                                                                     :fields-defs  fields-defs
+                                                                                     :data-row     %})
+                                                data-rows)]
+                      {:dataset/name    name
+                       :dataset/id-key  id-key
+                       :dataset/records initial-records
+                       :dataset/current-record (first initial-records)}))
    :query         [:dataset/name
                    :dataset/id-key
+                   {:dataset/current-record (prim/get-query DataRecord)}
                    {:dataset/records (prim/get-query DataRecord)}]})

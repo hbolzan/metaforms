@@ -14,10 +14,10 @@
   [this
    {:field/keys [id name label kind read-only data-type width options value]}
    {:keys [additional-group-class]}]
-  {:ident         [:field/by-name :field/name]
+  {:ident         [:field/by-id :field/id]
    :initial-state (fn
-                    [{:keys [name label field-kind read-only data-type width options] :as field-def}]
-                    {:field/id        (l-i/field-id field-def)
+                    [{:keys [form-id name label field-kind read-only data-type width options] :as field-def}]
+                    {:field/id        (keyword form-id name)
                      :field/name      name
                      :field/label     label
                      :field/kind      field-kind
@@ -67,13 +67,17 @@
   (prim/transact! component `[(set-form-state {:form-id ~form-id :new-state ~new-state})]))
 
 (def form-append (partial form-set-state :edit))
+(def form-delete (partial form-set-state :empty))
+(def form-edit (partial form-set-state :edit))
 (def form-confirm (partial form-set-state :view))
 (def form-discard (partial form-set-state :empty))
 
 (defn form-events [form-id]
-  {:events {:append  #(form-append form-id %)
-            :confirm #(form-confirm form-id %)
-            :discard #(form-discard form-id %)}})
+  {:append  #(form-append form-id %)
+   :delete  #(form-delete form-id %)
+   :edit    #(form-edit form-id %)
+   :confirm #(form-confirm form-id %)
+   :discard #(form-discard form-id %)})
 
 (defsc Form
   [this {:form/keys [id title state fields rows-defs dataset] :as props}]
@@ -85,17 +89,17 @@
                    {:form/fields (prim/get-query FormField)}
                    {:form/dataset (prim/get-query data/DataSet)}]
    :initial-state (fn
-                    [{{fields-defs :fields-defs} :form-definition :as form-definition
+                    [{{fields-defs :fields-defs form-id :id} :form-definition :as form-definition
                       dataset         :dataset}]
-                    {:form/id        (:id form-definition)
+                    {:form/id        form-id
                      :form/title     (:title form-definition)
                      :form/state     :empty
-                     :form/fields    (mapv #(prim/get-initial-state FormField %) fields-defs)
+                     :form/fields    (mapv #(prim/get-initial-state FormField (assoc % :form-id form-id)) fields-defs)
                      :form/rows-defs (l-cf/distribute-fields fields-defs l-cf/bootstrap-md-width)
                      :form/dataset   (prim/get-initial-state data/DataSet (assoc dataset :fields-defs fields-defs))})}
   (widgets/base
    {:title   title
-    :toolbar (toolset/toolset (prim/computed props (form-events id)))}
+    :toolbar (toolset/toolset (prim/computed props {:events (form-events id)}))}
    (dom/div nil (map-indexed (fn [index row-def] (form-row index row-def fields)) rows-defs))))
 
 (def form (prim/factory Form))
