@@ -72,10 +72,13 @@
           value      (or (:data-field/value data-field) "")]
       (swap! state assoc-in [:field/by-id field-id :field/value] value))))
 
-(defmutation do-set-form-state [{:keys [form-id new-state]}]
+(defmutation do-set-form-state
+  "checks current form/state before changing"
+  [{:keys [form-id new-state]}]
   (action [{:keys [state]}]
-          (let [form-ident [:form/by-id form-id]]
-            (swap! state assoc-in [:form/by-id form-id :form/state] new-state))))
+          (when-not (= new-state (get-in @state [:form/by-id form-id :form/state]))
+            (let [form-ident [:form/by-id form-id]]
+              (swap! state assoc-in [:form/by-id form-id :form/state] new-state)))))
 
 (defmutation do-form-discard [{:keys [form-id]}]
   (action [{:keys [state]}]
@@ -89,7 +92,6 @@
   (prim/transact! component `[(do-set-form-state {:form-id ~form-id :new-state ~new-state})]))
 
 (defn form-on-fields-change [component form-id field-name event]
-  ;; TODO: check current form state before calling set state
   (set-form-state :edit form-id component))
 
 (def form-append (partial set-form-state :edit))
