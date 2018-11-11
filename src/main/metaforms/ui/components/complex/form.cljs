@@ -13,7 +13,7 @@
 (defsc FormField
   [this
    {:field/keys [id name label kind read-only data-type width options value]}
-   {:keys [additional-group-class]}]
+   {:keys [additional-group-class form-on-change]}]
   {:ident         [:field/by-id :field/id]
    :initial-state (fn
                     [{:keys [form-id name label field-kind read-only data-type width options data-fields] :as field-def}]
@@ -45,7 +45,9 @@
                                   :label      label
                                   :value      value
                                   :options    options
-                                  :on-change  (fn [evt] (m/set-string! this :field/value :event evt))
+                                  :on-change  (fn [evt]
+                                                (m/set-string! this :field/value :event evt)
+                                                (when form-on-change (form-on-change name evt)))
                                   :read-only  read-only})))
 
 (def form-field (prim/factory FormField {:keyfn :field/name}))
@@ -54,39 +56,51 @@
   (action [{:keys [state]}]
           (swap! state assoc-in [:field/by-id field-id :field/value] value)))
 
-(defn form-sync-data [component data-fields]
-  (doseq [data-field data-fields]
-    (let [field-id (:data-field/id data-field) value (:data-field/value data-field)]
-      (prim/transact! component `[(set-field-value {:field-id ~field-id :value ~value})]))))
+(defn get-current-record [state form-id]
+  (get-in @state
+          (get-in @state
+                  (conj
+                   (get-in @state
+                           [:form/by-id form-id :form/dataset]) :dataset/current-record))))
 
-(defn dataset-after-refresh [component dataset]
-  #_(form-sync-data component (-> dataset :dataset/current-record :data-record/fields)))
+(defn form-sync-data [state form-fields data-fields]
+  (doseq [field-ident form-fields]
+    (let [form-field (get-in @state field-ident)
+          field-id   (:field/id form-field)
+          field-name (:field/name form-field)
+          data-field (first (filter #(= (:data-field/name %) field-name) data-fields))
+          value      (or (:data-field/value data-field) "")]
+      (swap! state assoc-in [:field/by-id field-id :field/value] value))))
 
-(defn form-row [row-index row-def fields]
-  (dom/div
-   {:className "form-row" :key (str "row-" row-index)}
-   (map (fn
-          [field bootstrap-width]
-          (form-field (prim/computed
-                       field {:additional-group-class (l-cf/width->col-md-class bootstrap-width)})))
-        (l-cf/row-fields row-def fields)
-        (:bootstrap-widths row-def))))
-
-(defmutation set-form-state [{:keys [form-id new-state]}]
+(defmutation do-set-form-state [{:keys [form-id new-state]}]
   (action [{:keys [state]}]
           (let [form-ident [:form/by-id form-id]]
-            (swap! state assoc-in (conj form-ident :form/state) new-state))))
+            (swap! state assoc-in [:form/by-id form-id :form/state] new-state))))
 
-(defn form-set-state [new-state form-id component]
-  (prim/transact! component `[(set-form-state {:form-id ~form-id :new-state ~new-state})]))
+(defmutation do-form-discard [{:keys [form-id]}]
+  (action [{:keys [state]}]
+          (let [current-record (get-current-record state form-id)
+                form-fields    (get-in @state [:form/by-id form-id :form/fields])
+                data-fields    (mapv #(get-in @state %) (:data-record/fields current-record))]
+            (form-sync-data state form-fields data-fields)
+            (swap! state assoc-in [:form/by-id form-id :form/state] (if (empty? current-record) :empty :view)))))
 
-(def form-append (partial form-set-state :edit))
-(def form-delete (partial form-set-state :empty))
-(def form-edit (partial form-set-state :edit))
-(def form-confirm (partial form-set-state :view))
-(def form-discard (partial form-set-state :empty))
+(defn set-form-state [new-state form-id component]
+  (prim/transact! component `[(do-set-form-state {:form-id ~form-id :new-state ~new-state})]))
 
-(defn form-events [form-id]
+(defn form-on-fields-change [component form-id field-name event]
+  ;; TODO: check current form state before calling set state
+  (set-form-state :edit form-id component))
+
+(def form-append (partial set-form-state :edit))
+(def form-delete (partial set-form-state :empty))
+(def form-edit (partial set-form-state :edit))
+(def form-confirm (partial set-form-state :view))
+
+(defn form-discard [form-id component]
+  (prim/transact! component `[(do-form-discard {:form-id ~form-id})]))
+
+(defn form-events [component form-id]
   {:append  #(form-append form-id %)
    :delete  #(form-delete form-id %)
    :edit    #(form-edit form-id %)
@@ -94,10 +108,23 @@
    :discard #(form-discard form-id %)})
 
 (defn dataset-events []
-  {:after-scroll  (partial dataset-after-refresh)
+  {:after-scroll  nil
    :after-insert  nil
    :after-delete  nil
-   :after-refresh (partial dataset-after-refresh)})
+   :after-refresh nil})
+
+(defn form-row
+  "renders fields distributed in a row"
+  [component form-id row-index row-def fields]
+  (dom/div
+   {:className "form-row" :key (str "row-" row-index)}
+   (map (fn
+          [field bootstrap-width]
+          (form-field (prim/computed
+                       field {:additional-group-class (l-cf/width->col-md-class bootstrap-width)
+                              :form-on-change         (partial form-on-fields-change component form-id)})))
+        (l-cf/row-fields row-def fields)
+        (:bootstrap-widths row-def))))
 
 (defsc Form
   [this {:form/keys [id title state fields rows-defs dataset] :as props}]
@@ -122,7 +149,7 @@
                        :form/dataset   dataset}))}
   (widgets/base
    {:title   title
-    :toolbar (toolset/toolset (prim/computed props {:events (form-events id)}))}
-   (dom/div nil (map-indexed (fn [index row-def] (form-row index row-def fields)) rows-defs))))
+    :toolbar (toolset/toolset (prim/computed props {:events (form-events this id)}))}
+   (dom/div nil (map-indexed (fn [index row-def] (form-row this id index row-def fields)) rows-defs))))
 
 (def form (prim/factory Form))
