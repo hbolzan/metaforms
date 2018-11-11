@@ -59,9 +59,10 @@
 (defn get-current-record [state form-id]
   (get-in @state
           (get-in @state
-                  (conj
-                   (get-in @state
-                           [:form/by-id form-id :form/dataset]) :dataset/current-record))))
+                  (conj (get-in @state [:form/by-id form-id :form/dataset]) :dataset/current-record))))
+
+(defn data-record->data-fields [state data-record]
+  (mapv #(get-in @state %) (:data-record/fields data-record)))
 
 (defn form-sync-data [state form-fields data-fields]
   (doseq [field-ident form-fields]
@@ -71,6 +72,13 @@
           data-field (first (filter #(= (:data-field/name %) field-name) data-fields))
           value      (or (:data-field/value data-field) "")]
       (swap! state assoc-in [:field/by-id field-id :field/value] value))))
+
+(defn record-sync-data [state form-fields data-fields]
+  (doseq [field-ident form-fields]
+    (let [form-field (get-in @state field-ident)
+          data-field (first (filter #(= (:data-field/name %) (:field/name form-field)) data-fields))
+          value      (:field/value form-field)]
+      (swap! state assoc-in [:data-field/by-id (:data-field/id data-field) :data-field/value] value))))
 
 (defmutation do-set-form-state
   "checks current form/state before changing"
@@ -84,9 +92,17 @@
   (action [{:keys [state]}]
           (let [current-record (get-current-record state form-id)
                 form-fields    (get-in @state [:form/by-id form-id :form/fields])
-                data-fields    (mapv #(get-in @state %) (:data-record/fields current-record))]
+                data-fields    (data-record->data-fields state current-record)]
             (form-sync-data state form-fields data-fields)
             (swap! state assoc-in [:form/by-id form-id :form/state] (if (empty? current-record) :empty :view)))))
+
+(defmutation do-form-confirm [{:keys [form-id]}]
+  (action [{:keys [state]}]
+          (let [current-record (get-current-record state form-id)
+                form-fields    (get-in @state [:form/by-id form-id :form/fields])
+                data-fields    (data-record->data-fields state current-record)]
+            (record-sync-data state form-fields data-fields)
+            (swap! state assoc-in [:form/by-id form-id :form/state] :view))))
 
 (defn set-form-state [new-state form-id component]
   (prim/transact! component `[(do-set-form-state {:form-id ~form-id :new-state ~new-state})]))
@@ -97,7 +113,10 @@
 (def form-append (partial set-form-state :edit))
 (def form-delete (partial set-form-state :empty))
 (def form-edit (partial set-form-state :edit))
-(def form-confirm (partial set-form-state :view))
+#_(def form-confirm (partial set-form-state :view))
+
+(defn form-confirm [form-id component]
+  (prim/transact! component `[(do-form-confirm {:form-id ~form-id})]))
 
 (defn form-discard [form-id component]
   (prim/transact! component `[(do-form-discard {:form-id ~form-id})]))
@@ -140,13 +159,17 @@
    :initial-state (fn
                     [{{fields-defs :fields-defs form-id :id} :form-definition :as form-definition
                       dataset-def                            :dataset}]
-                    (let [dataset (prim/get-initial-state data/DataSet (assoc dataset-def
-                                                                              :fields-defs fields-defs
-                                                                              :events (dataset-events)))]
+                    (let [dataset (prim/get-initial-state
+                                   data/DataSet
+                                   (assoc dataset-def
+                                          :fields-defs fields-defs
+                                          :events (dataset-events)))]
                       {:form/id        form-id
                        :form/title     (:title form-definition)
                        :form/state     (if (empty? (:dataset/records dataset)) :empty :view)
-                       :form/fields    (mapv #(prim/get-initial-state FormField (assoc % :form-id form-id :data-fields (-> dataset :dataset/current-record :data-record/fields))) fields-defs)
+                       :form/fields    (mapv #(prim/get-initial-state
+                                               FormField
+                                               (assoc % :form-id form-id :data-fields (-> dataset :dataset/current-record :data-record/fields))) fields-defs)
                        :form/rows-defs (l-cf/distribute-fields fields-defs l-cf/bootstrap-md-width)
                        :form/dataset   dataset}))}
   (widgets/base

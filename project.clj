@@ -6,6 +6,7 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [thheller/shadow-cljs "2.4.22"]
                  [fulcrologic/fulcro "2.6.0-RC9"]
+                 ;; [com.wsscode/pathom "2.2.0-RC4"]
                  [cider/cider-nrepl "0.18.0-SNAPSHOT"]
 
                  ; Only required if you use server
