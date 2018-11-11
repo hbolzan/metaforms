@@ -24,37 +24,40 @@
 
 (defsc DataRecord
   [this
-   {:data-record/keys [id dataset-name id-key state fields]}]
+   {:data-record/keys [id dataset-name id-key fields]}]
   {:ident         [:data-record/by-id :data-record/id]
    :initial-state (fn [{:keys [dataset-name id-key fields-defs data-row]}]
                     (let [record-id (str dataset-name "__" (get data-row id-key))]
                       {:data-record/id           record-id
                        :data-record/dataset-name dataset-name
                        :data-record/id-key       id-key
-                       :data-record/state        :browse
+                       :data-record/data         data-row
                        :data-record/fields       (mapv
                                                   (partial new-field data-row record-id)
                                                   fields-defs)}))
    :query         [:data-record/id
                    :data-record/dataset-name
                    :data-record/id-key
-                   :data-record/state
                    {:data-record/fields (prim/get-query DataField)}]})
 
 (defsc DataSet
-  [this {:dataset/keys [name id-key records current-record]}]
+  [this {:dataset/keys [name id-key state records current-record events]}]
   {:ident         [:dataset/by-name :dataset/name]
-   :initial-state (fn [{:keys [name id-key fields-defs data-rows]}]
+   :initial-state (fn [{:keys [name id-key fields-defs data-rows events]}]
                     (let [initial-records (mapv #(prim/get-initial-state DataRecord {:dataset-name name
                                                                                      :id-key       id-key
                                                                                      :fields-defs  fields-defs
                                                                                      :data-row     %})
                                                 data-rows)]
-                      {:dataset/name    name
-                       :dataset/id-key  id-key
-                       :dataset/records initial-records
+                      {:dataset/name           name
+                       :dataset/id-key         id-key
+                       :dataset/state          :browse
+                       :dataset/records        initial-records
+                       :dataset/events         events
                        :dataset/current-record (first initial-records)}))
    :query         [:dataset/name
                    :dataset/id-key
+                   :dataset/state
+                   :dataset/events
                    {:dataset/current-record (prim/get-query DataRecord)}
                    {:dataset/records (prim/get-query DataRecord)}]})

@@ -1,6 +1,6 @@
 (ns metaforms.ui.components.complex.form
   (:require [fulcro.client.primitives :as prim :refer [defsc]]
-            [fulcro.client.mutations :refer [defmutation]]
+            [fulcro.client.mutations :as m :refer [defmutation]]
             [metaforms.ui.logic.complex-forms :as l-cf]
             [metaforms.ui.logic.inputs :as l-i]
             [metaforms.ui.components.widgets :as widgets]
@@ -16,16 +16,17 @@
    {:keys [additional-group-class]}]
   {:ident         [:field/by-id :field/id]
    :initial-state (fn
-                    [{:keys [form-id name label field-kind read-only data-type width options] :as field-def}]
-                    {:field/id        (keyword form-id name)
-                     :field/name      name
-                     :field/label     label
-                     :field/kind      field-kind
-                     :field/read-only read-only
-                     :field/data-type data-type
-                     :field/width     width
-                     :field/options   options
-                     :field/value     ""})
+                    [{:keys [form-id name label field-kind read-only data-type width options data-fields] :as field-def}]
+                    (let [data-field (first (filter #(= (:data-field/name %) name) data-fields))]
+                      {:field/id        (keyword form-id name)
+                       :field/name      name
+                       :field/label     label
+                       :field/kind      field-kind
+                       :field/read-only read-only
+                       :field/data-type data-type
+                       :field/width     width
+                       :field/options   options
+                       :field/value     (or (:data-field/value data-field) "")}))
    :query         [:field/id
                    :field/name
                    :field/label
@@ -44,9 +45,22 @@
                                   :label      label
                                   :value      value
                                   :options    options
+                                  :on-change  (fn [evt] (m/set-string! this :field/value :event evt))
                                   :read-only  read-only})))
 
 (def form-field (prim/factory FormField {:keyfn :field/name}))
+
+(defmutation set-field-value [{:keys [field-id value]}]
+  (action [{:keys [state]}]
+          (swap! state assoc-in [:field/by-id field-id :field/value] value)))
+
+(defn form-sync-data [component data-fields]
+  (doseq [data-field data-fields]
+    (let [field-id (:data-field/id data-field) value (:data-field/value data-field)]
+      (prim/transact! component `[(set-field-value {:field-id ~field-id :value ~value})]))))
+
+(defn dataset-after-refresh [component dataset]
+  #_(form-sync-data component (-> dataset :dataset/current-record :data-record/fields)))
 
 (defn form-row [row-index row-def fields]
   (dom/div
@@ -79,6 +93,12 @@
    :confirm #(form-confirm form-id %)
    :discard #(form-discard form-id %)})
 
+(defn dataset-events []
+  {:after-scroll  (partial dataset-after-refresh)
+   :after-insert  nil
+   :after-delete  nil
+   :after-refresh (partial dataset-after-refresh)})
+
 (defsc Form
   [this {:form/keys [id title state fields rows-defs dataset] :as props}]
   {:ident         [:form/by-id :form/id]
@@ -90,13 +110,16 @@
                    {:form/dataset (prim/get-query data/DataSet)}]
    :initial-state (fn
                     [{{fields-defs :fields-defs form-id :id} :form-definition :as form-definition
-                      dataset         :dataset}]
-                    {:form/id        form-id
-                     :form/title     (:title form-definition)
-                     :form/state     :empty
-                     :form/fields    (mapv #(prim/get-initial-state FormField (assoc % :form-id form-id)) fields-defs)
-                     :form/rows-defs (l-cf/distribute-fields fields-defs l-cf/bootstrap-md-width)
-                     :form/dataset   (prim/get-initial-state data/DataSet (assoc dataset :fields-defs fields-defs))})}
+                      dataset-def                            :dataset}]
+                    (let [dataset (prim/get-initial-state data/DataSet (assoc dataset-def
+                                                                              :fields-defs fields-defs
+                                                                              :events (dataset-events)))]
+                      {:form/id        form-id
+                       :form/title     (:title form-definition)
+                       :form/state     (if (empty? (:dataset/records dataset)) :empty :view)
+                       :form/fields    (mapv #(prim/get-initial-state FormField (assoc % :form-id form-id :data-fields (-> dataset :dataset/current-record :data-record/fields))) fields-defs)
+                       :form/rows-defs (l-cf/distribute-fields fields-defs l-cf/bootstrap-md-width)
+                       :form/dataset   dataset}))}
   (widgets/base
    {:title   title
     :toolbar (toolset/toolset (prim/computed props {:events (form-events id)}))}
