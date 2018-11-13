@@ -50,7 +50,7 @@
                                                 (when form-on-change (form-on-change name evt)))
                                   :read-only  read-only})))
 
-(def form-field (prim/factory FormField {:keyfn :field/name}))
+(def form-field (prim/factory FormField {:keyfn :field/id}))
 
 (defmutation set-field-value [{:keys [field-id value]}]
   (action [{:keys [state]}]
