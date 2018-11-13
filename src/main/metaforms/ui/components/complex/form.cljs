@@ -56,10 +56,14 @@
   (action [{:keys [state]}]
           (swap! state assoc-in [:field/by-id field-id :field/value] value)))
 
+(defn dataset-ident-by-form-id [state form-id]
+  (get-in @state [:form/by-id form-id :form/dataset]))
+
+(defn current-record-ident-by-form-id [state form-id]
+  (get-in @state (conj (dataset-ident-by-form-id state form-id) :dataset/current-record)))
+
 (defn get-current-record [state form-id]
-  (get-in @state
-          (get-in @state
-                  (conj (get-in @state [:form/by-id form-id :form/dataset]) :dataset/current-record))))
+  (get-in @state (current-record-ident-by-form-id state form-id)))
 
 (defn data-record->data-fields [state data-record]
   (mapv #(get-in @state %) (:data-record/fields data-record)))
@@ -96,6 +100,27 @@
             (form-sync-data state form-fields data-fields)
             (swap! state assoc-in [:form/by-id form-id :form/state] (if (empty? current-record) :empty :view)))))
 
+(defmutation do-form-delete [{:keys [form-id]}]
+  (action [{:keys [state]}]
+          (let [current-record     (get-current-record state form-id)
+                data-records-path  (conj (get-in @state [:form/by-id form-id :form/dataset]) :dataset/records)
+                rest-records       (filterv
+                                    (fn [record-ident] (not= (last record-ident) (:data-record/id current-record)))
+                                    (get-in @state data-records-path))
+                new-current-record (last rest-records)
+                form-fields    (get-in @state [:form/by-id form-id :form/fields])
+                data-fields    (data-record->data-fields state (get-in @state new-current-record))]
+            (print "data-records-path: " data-records-path)
+            (print "rest-records: " rest-records)
+            (print "new-current-record: " new-current-record)
+            (print (conj (dataset-ident-by-form-id state form-id) :dataset/current-record))
+            (print "data-fields: " data-fields)
+            (swap! state assoc-in data-records-path rest-records)
+            (swap! state assoc-in (conj (dataset-ident-by-form-id state form-id) :dataset/current-record) new-current-record)
+            (form-sync-data state form-fields data-fields)
+            (swap! state assoc-in [:form/by-id form-id :form/state] (if (empty? current-record) :empty :view))
+            )))
+
 (defmutation do-form-confirm [{:keys [form-id]}]
   (action [{:keys [state]}]
           (let [current-record (get-current-record state form-id)
@@ -111,15 +136,17 @@
   (set-form-state :edit form-id component))
 
 (def form-append (partial set-form-state :edit))
-(def form-delete (partial set-form-state :empty))
+;; (def form-delete (partial set-form-state :empty))
 (def form-edit (partial set-form-state :edit))
-#_(def form-confirm (partial set-form-state :view))
 
 (defn form-confirm [form-id component]
   (prim/transact! component `[(do-form-confirm {:form-id ~form-id})]))
 
 (defn form-discard [form-id component]
   (prim/transact! component `[(do-form-discard {:form-id ~form-id})]))
+
+(defn form-delete [form-id component]
+  (prim/transact! component `[(do-form-delete {:form-id ~form-id})]))
 
 (defn form-events [component form-id]
   {:append  #(form-append form-id %)
