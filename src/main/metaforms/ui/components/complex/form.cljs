@@ -69,13 +69,15 @@
   (mapv #(get-in @state %) (:data-record/fields data-record)))
 
 (defn form-sync-data [state form-fields data-fields]
-  (doseq [field-ident form-fields]
-    (let [form-field (get-in @state field-ident)
-          field-id   (:field/id form-field)
-          field-name (:field/name form-field)
-          data-field (first (filter #(= (:data-field/name %) field-name) data-fields))
-          value      (or (:data-field/value data-field) "")]
-      (swap! state assoc-in [:field/by-id field-id :field/value] value))))
+  (let [field-ident (first form-fields)]
+    (if-not field-ident
+      state
+      (let [form-field (get-in state field-ident)
+            field-id   (:field/id form-field)
+            field-name (:field/name form-field)
+            data-field (first (filter #(= (:data-field/name %) field-name) data-fields))
+            value      (or (:data-field/value data-field) "")]
+        (form-sync-data (assoc-in state [:field/by-id field-id :field/value] value) (rest form-fields) data-fields)))))
 
 (defn record-sync-data [state form-fields data-fields]
   (doseq [field-ident form-fields]
@@ -87,18 +89,29 @@
 (defmutation do-set-form-state
   "checks current form/state before changing"
   [{:keys [form-id new-state]}]
-  (action [{:keys [state]}]
+  (action [{:keys [state]}
+]
           (when-not (= new-state (get-in @state [:form/by-id form-id :form/state]))
             (let [form-ident [:form/by-id form-id]]
               (swap! state assoc-in [:form/by-id form-id :form/state] new-state)))))
+
+(defmutation do-form-sync
+  [{:keys [form-id]}]
+  (action [{:keys [state]}]
+          (let [current-record (get-current-record state form-id)
+                form-fields    (get-in @state [:form/by-id form-id :form/fields])
+                data-fields    (data-record->data-fields state current-record)]
+            (swap! state (fn [s] (form-sync-data s form-fields data-fields))))))
 
 (defmutation do-form-discard [{:keys [form-id]}]
   (action [{:keys [state]}]
           (let [current-record (get-current-record state form-id)
                 form-fields    (get-in @state [:form/by-id form-id :form/fields])
                 data-fields    (data-record->data-fields state current-record)]
-            (form-sync-data state form-fields data-fields)
-            (swap! state assoc-in [:form/by-id form-id :form/state] (if (empty? data-fields) :empty :view)))))
+            (swap! state (fn [s]
+                           (-> s
+                               (form-sync-data form-fields data-fields)
+                               (assoc-in [:form/by-id form-id :form/state] (if (empty? data-fields) :empty :view))))))))
 
 (defmutation do-form-delete [{:keys [form-id]}]
   (action [{:keys [state]}]
@@ -108,12 +121,15 @@
                                     (fn [record-ident] (not= (last record-ident) (:data-record/id current-record)))
                                     (get-in @state data-records-path))
                 new-current-record (last rest-records)
-                form-fields    (get-in @state [:form/by-id form-id :form/fields])
-                data-fields    (data-record->data-fields state (get-in @state new-current-record))]
-            (swap! state assoc-in data-records-path rest-records)
-            (swap! state assoc-in (conj (dataset-ident-by-form-id state form-id) :dataset/current-record) new-current-record)
-            (swap! state assoc-in [:form/by-id form-id :form/state] (if (empty? data-fields) :empty :view))
-            (form-sync-data state form-fields data-fields))))
+                form-fields        (get-in @state [:form/by-id form-id :form/fields])
+                data-fields        (data-record->data-fields state (get-in @state new-current-record))]
+            (swap! state (fn[s]
+                     (-> s
+                         (assoc-in data-records-path rest-records)
+                         (assoc-in (conj (dataset-ident-by-form-id state form-id) :dataset/current-record) new-current-record)
+                         (assoc-in [:form/by-id form-id :form/state] (if (empty? data-fields) :empty :view))
+                         ;; (form-sync-data form-fields data-fields)
+                         ))))))
 
 (defmutation do-form-confirm [{:keys [form-id]}]
   (action [{:keys [state]}]
@@ -130,24 +146,25 @@
   (set-form-state :edit form-id component))
 
 (def form-append (partial set-form-state :edit))
-;; (def form-delete (partial set-form-state :empty))
 (def form-edit (partial set-form-state :edit))
 
 (defn form-confirm [form-id component]
   (prim/transact! component `[(do-form-confirm {:form-id ~form-id})]))
 
-(defn form-discard [form-id component]
-  (prim/transact! component `[(do-form-discard {:form-id ~form-id})]))
+(defn form-discard [form-id form-component component]
+  (prim/transact! form-component `[(do-form-discard {:form-id ~form-id})]))
 
-(defn form-delete [form-id component]
-  (prim/transact! component `[(do-form-delete {:form-id ~form-id})]))
+(defn form-delete [form-id form-component component]
+  (prim/transact! form-component `[(do-form-delete {:form-id ~form-id})])
+  (js/setTimeout #(prim/transact! form-component `[(do-form-sync {:form-id ~form-id})]) 100))
 
 (defn form-events [component form-id]
   {:append  #(form-append form-id %)
-   :delete  #(form-delete form-id %)
+   :delete  #(form-delete form-id component %)
    :edit    #(form-edit form-id %)
    :confirm #(form-confirm form-id %)
-   :discard #(form-discard form-id %)})
+   :discard #(form-discard form-id component %)
+   :refresh #(form-discard form-id component %)})
 
 (defn dataset-events []
   {:after-scroll  nil
