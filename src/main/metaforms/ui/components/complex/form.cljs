@@ -1,5 +1,6 @@
 (ns metaforms.ui.components.complex.form
   (:require [fulcro.client.primitives :as prim :refer [defsc]]
+            [fulcro.client.util :as util]
             [fulcro.client.mutations :as m :refer [defmutation]]
             [metaforms.ui.logic.complex-forms :as l-cf]
             [metaforms.ui.logic.inputs :as l-i]
@@ -128,8 +129,7 @@
                          (assoc-in data-records-path rest-records)
                          (assoc-in (conj (dataset-ident-by-form-id state form-id) :dataset/current-record) new-current-record)
                          (assoc-in [:form/by-id form-id :form/state] (if (empty? data-fields) :empty :view))
-                         ;; (form-sync-data form-fields data-fields)
-                         ))))))
+                         (form-sync-data form-fields data-fields)))))))
 
 (defmutation do-form-confirm [{:keys [form-id]}]
   (action [{:keys [state]}]
@@ -156,7 +156,7 @@
 
 (defn form-delete [form-id form-component component]
   (prim/transact! form-component `[(do-form-delete {:form-id ~form-id})])
-  (js/setTimeout #(prim/transact! form-component `[(do-form-sync {:form-id ~form-id})]) 100))
+  (js/setTimeout #(util/force-render (prim/get-reconciler form-component)) 1))
 
 (defn form-events [component form-id]
   {:append  #(form-append form-id %)
