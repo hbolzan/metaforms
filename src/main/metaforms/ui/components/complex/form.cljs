@@ -4,6 +4,7 @@
             [fulcro.client.mutations :as m :refer [defmutation]]
             [metaforms.ui.logic.complex-forms :as l-cf]
             [metaforms.ui.logic.inputs :as l-i]
+            [metaforms.ui.components.dialogs :as dialogs]
             [metaforms.ui.components.widgets :as widgets]
             [metaforms.ui.components.data :as data]
             [metaforms.ui.components.complex.inputs :as w-i]
@@ -155,8 +156,12 @@
   (prim/transact! form-component `[(do-form-discard {:form-id ~form-id})]))
 
 (defn form-delete [form-id form-component component]
-  (prim/transact! form-component `[(do-form-delete {:form-id ~form-id})])
-  (js/setTimeout #(util/force-render (prim/get-reconciler form-component)) 1))
+  (dialogs/confirmation-dialog
+   "Confirmation"
+   "Delete record?"
+   (fn [] (do
+           (prim/transact! form-component `[(do-form-delete {:form-id ~form-id})])
+           (js/setTimeout #(util/force-render (prim/get-reconciler form-component)) 1)))))
 
 (defn form-events [component form-id]
   {:append  #(form-append form-id %)
