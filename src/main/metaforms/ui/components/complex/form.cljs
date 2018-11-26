@@ -91,8 +91,7 @@
 (defmutation do-set-form-state
   "checks current form/state before changing"
   [{:keys [form-id new-state]}]
-  (action [{:keys [state]}
-]
+  (action [{:keys [state]}]
           (when-not (= new-state (get-in @state [:form/by-id form-id :form/state]))
             (let [form-ident [:form/by-id form-id]]
               (swap! state assoc-in [:form/by-id form-id :form/state] new-state)))))
@@ -132,6 +131,30 @@
                          (assoc-in [:form/by-id form-id :form/state] (if (empty? data-fields) :empty :view))
                          (form-sync-data form-fields data-fields)))))))
 
+(defn next-record [current-record-id all-records]
+  (if (= (-> all-records first last) current-record-id)
+    (second all-records)
+    (next-record current-record-id (rest all-records))))
+
+(defmutation do-form-navigate [{:keys [form-id nav-action]}]
+  (action [{:keys [state]}]
+          (let [current-record     (get-current-record state form-id)
+                data-records-path  (conj (get-in @state [:form/by-id form-id :form/dataset]) :dataset/records)
+                all-records        (get-in @state data-records-path)
+                new-current-record (cond
+                                     (= nav-action :first) (first all-records)
+                                     (= nav-action :prior) (next-record (:data-record/id current-record) (reverse all-records))
+                                     (= nav-action :next)  (next-record (:data-record/id current-record) all-records)
+                                     (= nav-action :last)  (last all-records))
+                form-fields        (get-in @state [:form/by-id form-id :form/fields])
+                data-fields        (data-record->data-fields state (get-in @state new-current-record))]
+            (when new-current-record
+              (swap! state (fn[s]
+                             (-> s
+                                 (assoc-in (conj (dataset-ident-by-form-id state form-id) :dataset/current-record) new-current-record)
+                                 (assoc-in [:form/by-id form-id :form/state] :view)
+                                 (form-sync-data form-fields data-fields))))))))
+
 (defmutation do-form-confirm [{:keys [form-id]}]
   (action [{:keys [state]}]
           (let [current-record (get-current-record state form-id)
@@ -149,6 +172,10 @@
 (def form-append (partial set-form-state :edit))
 (def form-edit (partial set-form-state :edit))
 
+(defn form-nav [form-id nav-action form-component component]
+  (prim/transact! form-component `[(do-form-navigate {:form-id ~form-id :nav-action ~nav-action})])
+  (js/setTimeout #(util/force-render (prim/get-reconciler form-component)) 1))
+
 (defn form-confirm [form-id component]
   (prim/transact! component `[(do-form-confirm {:form-id ~form-id})]))
 
@@ -164,12 +191,16 @@
            (js/setTimeout #(util/force-render (prim/get-reconciler form-component)) 1)))))
 
 (defn form-events [component form-id]
-  {:append  #(form-append form-id %)
-   :delete  #(form-delete form-id component %)
-   :edit    #(form-edit form-id %)
-   :confirm #(form-confirm form-id %)
-   :discard #(form-discard form-id component %)
-   :refresh #(form-discard form-id component %)})
+  {:append    #(form-append form-id %)
+   :delete    #(form-delete form-id component %)
+   :edit      #(form-edit form-id %)
+   :confirm   #(form-confirm form-id %)
+   :discard   #(form-discard form-id component %)
+   :refresh   #(form-discard form-id component %)
+   :nav-first #(form-nav form-id :first component %)
+   :nav-prior #(form-nav form-id :prior component %)
+   :nav-next  #(form-nav form-id :next component %)
+   :nav-last  #(form-nav form-id :last component %)})
 
 (defn dataset-events []
   {:after-scroll  nil
@@ -200,15 +231,17 @@
                    {:form/fields (prim/get-query FormField)}
                    {:form/dataset (prim/get-query data/DataSet)}]
    :initial-state (fn
-                    [{{fields-defs :fields-defs form-id :id} :form-definition :as form-definition
-                      dataset-def                            :dataset}]
+                    [{{fields-defs :fields-defs
+                       form-id     :id
+                       title       :title} :form-definition :as form-definition
+                      dataset-def          :dataset}]
                     (let [dataset (prim/get-initial-state
                                    data/DataSet
                                    (assoc dataset-def
                                           :fields-defs fields-defs
                                           :events (dataset-events)))]
                       {:form/id        form-id
-                       :form/title     (:title form-definition)
+                       :form/title     title
                        :form/state     (if (empty? (:dataset/records dataset)) :empty :view)
                        :form/fields    (mapv #(prim/get-initial-state
                                                FormField
@@ -217,7 +250,7 @@
                        :form/dataset   dataset}))}
   (widgets/base
    {:title   title
-    :toolbar (toolset/toolset (prim/computed props {:events (form-events this id)}))}
+    :toolbar (toolset/toolset props (form-events this id))}
    (dom/div nil (map-indexed (fn [index row-def] (form-row this id index row-def fields)) rows-defs))))
 
 (def form (prim/factory Form))
