@@ -46,9 +46,10 @@
     :width      20}
    ])
 
-(def form-definition {:id          :sample
-                      :title       "Sample Form"
-                      :fields-defs complex-table-columns-definition})
+(def form-definition {:id           :sample
+                      :dataset-name "sample-ds"
+                      :title        "Sample Form"
+                      :fields-defs  complex-table-columns-definition})
 
 (def data [{"id" 1 "name" "Some Customer Name" "kind" "D"}
            {"id" 2 "name" "Other Customer Name" "kind" "L"}])

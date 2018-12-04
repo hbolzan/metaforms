@@ -3,11 +3,13 @@
   :license {:name "MIT" :url "https://opensource.org/licenses/MIT"}
   :min-lein-version "2.7.0"
 
-  :dependencies [[org.clojure/clojure "1.9.0"]
-                 [thheller/shadow-cljs "2.4.22"]
+  :dependencies [[cider/cider-nrepl "0.18.0-SNAPSHOT"]
+                 [com.wsscode/pathom "2.2.0-RC4"]
                  [fulcrologic/fulcro "2.6.0-RC9"]
-                 ;; [com.wsscode/pathom "2.2.0-RC4"]
-                 [cider/cider-nrepl "0.18.0-SNAPSHOT"]
+                 [org.clojure/clojure "1.9.0"]
+                 [org.clojure/core.async "0.4.490"]
+                 [org.clojure/test.check "0.10.0-alpha3"]
+                 [thheller/shadow-cljs "2.4.22"]
 
                  ; Only required if you use server
                  [http-kit "2.3.0"]

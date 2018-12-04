@@ -6,5 +6,4 @@
 (defmutation mutate-form
   [{:keys [form-mutation-fn]}]
   (action [{:keys [state]}]
-          (print state)
           (swap! state update-in [:form] form-mutation-fn)))
